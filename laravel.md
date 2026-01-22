@@ -72,3 +72,65 @@ auth()->user()
 ```
 
 Why: Class names are refactor-safe. `\Auth::` provides better LSP autocomplete and jump-to-definition in Neovim.
+
+### Practical Examples
+
+- Prefer `$request->user()` when `Request $request` is injected
+- Use `\Auth::user()` as fallback when Request unavailable
+- Never use `auth()->user()` global helper
+
+If you are unable to use injected dependencies, please follow the rules regarding PHPDocs.
+
+Use `@var` PHPDoc annotations when IDE or static analysis (Larastan) can't infer types, particularly for user variables or when working with mixed/uncertain types.
+
+## Single Action Classes
+
+Prefer single action classes over business logic methods on models. Encapsulate business logic in dedicated action classes.
+
+### Structure Requirements
+
+- Exactly ONE public `execute()` method - this is the only external interface
+- Can have multiple private/protected methods for internal implementation
+- Private methods must be **internal to the class** (never called externally)
+- All action classes must be **instances**, never static methods
+- Names must **ALWAYS start with a verb** (e.g., `Get`, `Calculate`, `Process`)
+
+### Placement and Organization
+
+- Store in `app/Actions/` directory
+- Create subdirectories inside `Actions/` for organizational purposes (e.g., `app/Actions/Dashboard/`, `app/Actions/Timeslip/`)
+- Organize by domain or feature area
+
+### Usage Patterns
+
+```php
+// ✅ Preferred - Dependency Injection
+public function __invoke(
+    GetPrimaryVehicle $getPrimaryVehicle,
+    GetVehicleStats $getVehicleStats
+) {
+    $primaryVehicle = $getPrimaryVehicle->execute($user);
+    $stats = $getVehicleStats->execute($vehicle);
+}
+
+// ✅ Acceptable - Manual Instantiation (when DI not available)
+$action = new GetPrimaryVehicle();
+$result = $action->execute($user);
+```
+
+### Naming Conventions
+
+Use descriptive names following Verb-Noun or Verb-Adjective patterns:
+
+- `GetPrimaryVehicle` - Retrieve specific data
+- `GetPerformanceTrends` - Compute trends from data
+- `GetVehicleStats` - Calculate statistics
+- `GetDefaultTimeslipName` - Generate formatted output
+
+### Benefits
+
+- Models stay thin (data access and relationships only)
+- Logic is testable in isolation
+- Single responsibility principle per class
+- Clear dependency injection
+- Easy to find and maintain business logic
