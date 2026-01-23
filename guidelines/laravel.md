@@ -9,11 +9,14 @@ Why: Improves readability, keeps code concise, and still preserves refactor safe
 ```
 // ✅ Good
 use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\App;
 
 $this->assertInstanceOf(Batch::class, $batch);
+App::make();
 
 // ❌ Avoid
 $this->assertInstanceOf(\Illuminate\Bus\Batch::class, $batch);
+\App::make();
 ```
 
 ## Class Names Over Strings (Everywhere)
@@ -56,32 +59,35 @@ Use static facades with leading backslash for better IDE/LSP support (Neovim + I
 
 ```php
 // ✅ Good
-\Auth::check()
-\Auth::user()
-\Gate::allows('premium')
-\Cache::get('key')
+Auth::check()
+Auth::user()
+Gate::allows('premium')
+Cache::get('key')
+App::make()
 
 // ❌ Avoid
 auth()->check()
 auth()->user()
+app()
 
 {{-- ✅ Blade --}}
-@if(\Auth::check())
-{{ \Auth::user()->name }}
+@if(Auth::check())
+{{ Auth::user()->name }}
 @endif
 ```
 
-Why: Class names are refactor-safe. `\Auth::` provides better LSP autocomplete and jump-to-definition in Neovim.
+Why: Class names are refactor-safe. `Auth::` provides better LSP autocomplete and jump-to-definition in Neovim.
 
 ### Practical Examples
 
 - Prefer `$request->user()` when `Request $request` is injected
-- Use `\Auth::user()` as fallback when Request unavailable
+- Use `Auth::user()` as fallback when Request unavailable
 - Never use `auth()->user()` global helper
 
 If you are unable to use injected dependencies, please follow the rules regarding PHPDocs.
 
 Use `@var` PHPDoc annotations when IDE or static analysis (Larastan) can't infer types, particularly for user variables or when working with mixed/uncertain types.
+
 
 ## Single Action Classes
 
@@ -126,6 +132,55 @@ Use descriptive names following Verb-Noun or Verb-Adjective patterns:
 - `GetPerformanceTrends` - Compute trends from data
 - `GetVehicleStats` - Calculate statistics
 - `GetDefaultTimeslipName` - Generate formatted output
+
+
+### Dependencies vs Data
+
+  When creating Action classes, clearly separate dependencies from data:
+
+  **Constructor (Dependencies):**
+  - Services, helpers, clients, repositories
+  - Things resolved from the container
+  - Stateless collaborators the action needs to do its work
+
+  **Execute Method (Data):**
+  - Models, DTOs, arrays, primitives
+  - The specific data being operated on
+  - Things that change per invocation
+
+  ```php
+  // ✅ Correct
+  class SendMassTextAction {
+      public function __construct(
+          protected SMSHelper $smsHelper  // Dependency - injected via DI
+      ) {}
+
+      public function execute(TextMessage $textMessage): Batch {  // Data - passed per call
+          // ...
+      }
+  }
+
+  // Usage
+  $action = App::make(SendMassTextAction::class);
+  $batch = $action->execute($textMessage);
+
+  // ❌ Wrong - mixing data into constructor
+  class SendMassTextAction {
+      public function __construct(
+          public TextMessage $textMessage,  // Data should NOT be here
+          protected SMSHelper $smsHelper
+      ) {}
+
+      public function execute(): Batch { ... }
+  }
+
+  // Awkward usage
+  $action = App::make(SendMassTextAction::class, ['textMessage' => $txt]);
+  $batch = $action->execute();
+
+  Rule of thumb: If you need to pass parameters to app(), you're probably putting data in the constructor that belongs in the
+  method.
+  ```
 
 ### Benefits
 
