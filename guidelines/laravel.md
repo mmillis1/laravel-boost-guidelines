@@ -178,8 +178,7 @@ Use descriptive names following Verb-Noun or Verb-Adjective patterns:
   $action = App::make(SendMassTextAction::class, ['textMessage' => $txt]);
   $batch = $action->execute();
 
-  Rule of thumb: If you need to pass parameters to app(), you're probably putting data in the constructor that belongs in the
-  method.
+  Rule of thumb: If you need to pass parameters to App::make(), you're probably putting data in the constructor that belongs in the method.
   ```
 
 ### Benefits
